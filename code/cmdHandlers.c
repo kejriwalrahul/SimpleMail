@@ -43,17 +43,18 @@ char* listUsers(){
 	DIR *d;
 	struct dirent *dir;
 
-	char *userlist = "";
+	char *userlist = malloc(2048);
 
 	d = opendir(".");
 	if(d){
 		char *p;
 
-		while( (dir = readdir(d)) != NULL)
+		while( (dir = readdir(d)) != NULL){
 			if( (p =strstr(dir->d_name, ".dat")) != NULL){
 				strcat(userlist, strtok(dir->d_name, "."));
 				strcat(userlist, " ");
-			}
+			}			
+		}
 
 		return userlist;
 	}

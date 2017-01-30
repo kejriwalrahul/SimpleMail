@@ -1,7 +1,10 @@
 all: server client
 
-server: cmdHandlers.c
-	gcc server.c -g -o server
+server: code/cmdHandlers.c
+	gcc code/server.c -g -o bin/server
 
 client:
-	gcc client.c -g -o client
+	gcc code/client.c -g -o bin/client
+
+rs:
+	@./bin/server
