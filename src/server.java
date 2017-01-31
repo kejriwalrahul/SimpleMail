@@ -81,7 +81,6 @@ class CommandParser{
 	String closeUser(){
 		String res = "";
 		userid =  "";
-//		curfile.
 		
 		
 		return res;
@@ -96,24 +95,15 @@ class CommandParser{
 	String dispatchCommand(String cmd){
 		String[] tokens = cmd.split(" ");
 		
-		if(tokens[0] == "LSTU")
-			return listUsers();
-		else if(tokens[0] == "ADDU")
-			return addUser(tokens[1]);
-		else if(tokens[0] == "USER")
-			return setCurrUser(tokens[1]);
-		else if(tokens[0] == "READM")
-			return readMsg();
-		else if(tokens[0] == "DELM")
-			return delMsg();
-		else if(tokens[0] == "SEND")
-			return sendMsg(tokens[1]);
-		else if(tokens[0] == "DONEU")
-			return closeUser();
-		else if(tokens[0] == "QUIT")
-			return closeConnection();
-		else
-			errorExit("Unknown Command!");
+		if(tokens[0].equals("LSTU"))			return listUsers();
+		else if(tokens[0].equals("ADDU"))		return addUser(tokens[1]);
+		else if(tokens[0].equals("USER"))		return setCurrUser(tokens[1]);
+		else if(tokens[0].equals("READM"))		return readMsg();
+		else if(tokens[0].equals("DELM"))		return delMsg();
+		else if(tokens[0].equals("SEND"))		return sendMsg(tokens[1]);
+		else if(tokens[0].equals("DONEU"))		return closeUser();
+		else if(tokens[0].equals("QUIT"))		return closeConnection();
+		else									errorExit("Unknown Command!");
 	
 		// To satisfy compiler
 		return "";
@@ -139,21 +129,32 @@ class Server implements Runnable{
 	 */
 	public void run(){
 		try{	
-//			 CommandParser c = new CommandParser();
+			CommandParser c = new CommandParser();
 			while(true){
 				DataInputStream in = new DataInputStream(usersock.getInputStream());
-				String cmd = in.readUTF();
-				System.out.println("Recvd: " + cmd);
+				String cmd;
 				
-				// String res = c.dispatchCommand(cmd);
+				try{
+					/*
+					 * Loop and read whole thing
+					 */
+					cmd = in.readUTF();
+				}
+				catch(EOFException e){
+					System.out.println("Exiting!");
+					break;
+				}
+				
+				System.out.println("Received: " + cmd);
+				
+				String res = c.dispatchCommand(cmd);
 				if(cmd.equals("QUIT")){
 					System.out.println("Exiting!");
 					break;
 				}
 					
-				// Send back res
 				DataOutputStream out = new DataOutputStream(usersock.getOutputStream());
-				out.writeUTF("This is my response to you");
+				out.writeUTF(res);
 			}
 			usersock.close();
 		}
@@ -167,6 +168,9 @@ class Server implements Runnable{
 			try{
 				usersock = sock.accept();
 				t = new Thread(this, "user thread " + Integer.toString(usersock.getLocalPort()));
+				/*
+				 * Waiting here, fix. Plus, handle EOF.
+				 */
 				t.run();
 			}
 			catch(IOException e){
