@@ -1,12 +1,13 @@
 all: server client
 
-server: code/cmdHandlers.c
-	@mkdir -p bin
-	gcc code/server.c -g -o bin/server
+server: src/server.java
+	javac src/server.java
 
-client:
-	@mkdir -p bin
-	gcc code/client.c -g -o bin/client
+client: src/client.java
+	javac src/client.java
 
-rs:
-	@./bin/server
+rs: server
+	@cd src && java server 1080
+
+rc: client
+	@cd src && java client localhost 1080
