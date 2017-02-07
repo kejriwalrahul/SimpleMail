@@ -1,12 +1,23 @@
 import java.util.*;
 import java.io.*;
+import java.nio.file.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+/*
+ * To do:
+ * 		Loop while receiving packets
+ */
+
 class CommandParser{
+	
+	// Current userid
 	String userid = "";
-	// Change it to DataInputStream	
-	File curfile = null;
+
+	//	Current User File
+	RandomAccessFile fil;
+	// BufferedReader rfil;
+	// BufferedWriter wfil;
 	
 	void errorExit(String s){
 		System.err.println("Error: " + s);
@@ -40,7 +51,34 @@ class CommandParser{
 			e.printStackTrace();
 		}
 		
-		return "";
+		return "Add User Successful";
+	}
+	
+	int countMsgs(){
+		String line;
+		int count = 0;
+		
+		try{
+			while((line = fil.readUTF()) != null){
+				if(line.trim().contains("###"))
+					count++;
+			}
+		}
+		catch(EOFException e){
+			try{
+				fil.seek(0);	
+			}
+			catch(IOException ef){
+				ef.printStackTrace();
+			}
+		}
+		catch(IOException e){
+			e.printStackTrace();
+			errorExit("IOError from count msgs!");
+		}
+		
+		System.out.println("No of msgs: " + Integer.toString(count) + "\n");
+		return count;
 	}
 	
 	String setCurrUser(String u){
@@ -54,14 +92,47 @@ class CommandParser{
 			return "User does not exist!";
 		
 		userid = u;
+
+		try{
+			/*
+				Path p = FileSystems.getDefault().getPath("", u+".dat");
+				rfil = Files.newBufferedReader(p);
+				wfil = Files.newBufferedWriter(p);
+			*/
+			
+			fil = new RandomAccessFile(f, "rw");
+		}
+		catch(IOException e){
+			e.printStackTrace();
+			errorExit("File Open Error!");
+		}
 		
-		
-		
-		return res;
+		return "User " + u + " exists and has " + Integer.toString(countMsgs()) + " number of messages in his/her spool file";
 	}
 	
 	String readMsg(){
 		String res = "";
+		
+		String s = "\n";
+		int idx;
+		try{
+			while((s = fil.readUTF()) != null){
+				if(s.trim().contains("###")){
+					res += s;
+					break;
+				}
+				res += s;
+			}
+		}
+		catch(EOFException e){
+			
+		}
+		catch(IOException e){
+			e.printStackTrace();
+		}
+		
+		if(res == "")
+			res = "No More Mail";
 		
 		return res;
 	}
@@ -72,22 +143,59 @@ class CommandParser{
 		return res;
 	}
 	
-	String sendMsg(String u){
-		String res = "";
+	/*
+	 * What if sending urself?
+	 * 
+	*/
+	String sendMsg(String cmd){
+		String[] parts = cmd.split("###");
+		String[] toks  = parts[0].split(" ");
 		
-		return res;
+		String recvr = toks[1];
+
+		String subj = "";
+		for(int i=2;i<toks.length;i++)
+			subj += toks[i] + " ";
+		subj = subj.trim();
+		
+		String msg  = parts[1] + "\n###";
+		
+		File recvf = new File("./" + recvr + ".dat");
+		if(!recvf.exists())
+			return "Reciever does not exist!";
+		
+		try{
+			RandomAccessFile recvfil = new RandomAccessFile(recvf, "rw");
+			
+			recvfil.seek(recvfil.length());
+			recvfil.writeUTF("\nFrom: " + userid.trim() + "\n");
+			recvfil.writeUTF("To: " + recvr.trim() + "\n");
+			recvfil.writeUTF("Subject: " + subj.trim() + "\n");
+			recvfil.writeUTF(msg.trim() + "\n");
+			
+			recvfil.close();
+			
+			return "Message Sent";
+		}
+		catch(IOException e){
+			e.printStackTrace();
+		}
+		
+		return "Error";
 	}
 	
 	String closeUser(){
-		String res = "";
+		String res = "Close Successful";
+		
 		userid =  "";
-		
-		
-		return res;
-	}
-	
-	String closeConnection(){
-		String res = "";
+		try{
+			fil.close();
+			// rfil.close();
+			// wfil.close();			
+		}
+		catch(IOException e){
+			e.printStackTrace();
+		}
 		
 		return res;
 	}
@@ -95,18 +203,20 @@ class CommandParser{
 	String dispatchCommand(String cmd){
 		String[] tokens = cmd.split(" ");
 		
-		if(tokens[0].equals("LSTU"))			return listUsers();
-		else if(tokens[0].equals("ADDU"))		return addUser(tokens[1]);
-		else if(tokens[0].equals("USER"))		return setCurrUser(tokens[1]);
-		else if(tokens[0].equals("READM"))		return readMsg();
-		else if(tokens[0].equals("DELM"))		return delMsg();
-		else if(tokens[0].equals("SEND"))		return sendMsg(tokens[1]);
-		else if(tokens[0].equals("DONEU"))		return closeUser();
-		else if(tokens[0].equals("QUIT"))		return closeConnection();
-		else									errorExit("Unknown Command!");
-	
-		// To satisfy compiler
-		return "";
+		if(tokens.length >= 2){
+			if(tokens[0].equals("ADDU"))			return addUser(tokens[1]);
+			else if(tokens[0].equals("USER"))		return setCurrUser(tokens[1]);
+			else if(tokens[0].equals("SEND"))		return sendMsg(cmd);
+			else 									return "Syntax Error!";
+		}
+		else{
+			if(tokens[0].equals("LSTU"))			return listUsers();
+			else if(tokens[0].equals("READM"))		return readMsg();
+			else if(tokens[0].equals("DELM"))		return delMsg();
+			else if(tokens[0].equals("DONEU"))		return closeUser();
+			else if(tokens[0].equals("QUIT"))		return "";
+			else 									return "Syntax Error";
+		}
 	}
 }
 

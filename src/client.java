@@ -37,7 +37,8 @@ public class client{
 			else if(cmd.equals("Quit"))
 				str = "QUIT";
 			else
-				errorExit("Unknown Command!");
+				return "Unknown Command!";
+				// errorExit("Unknown Command!");
 		}
 		else{
 			System.out.print("Sub-Prompt-"+userid+"> ");
@@ -45,7 +46,9 @@ public class client{
 
 			String[] toks = str.split(" ");
 			String cmd = toks[0];
-			String arg = toks[1];
+			String arg = "";
+			if(toks.length > 1)
+				arg = toks[1];				
 			
 			if(cmd.equals("Read"))
 				str = "READM";
@@ -53,6 +56,20 @@ public class client{
 				str = "DELM";
 			else if(cmd.equals("Send")){
 				// to do
+				String subject, msg;
+				
+				System.out.print("\tType Subject: ");
+				subject = stdin.nextLine();
+				
+				System.out.print("\tType Message: ");
+				msg = stdin.nextLine();
+				while(!msg.endsWith("###")){
+					System.out.print("\t         ...: ");
+					msg += stdin.nextLine();
+					msg = msg.trim();
+				}
+				
+				str = "SEND " + arg + " " + subject + " ### " + msg;
 			}
 			else if(cmd.equals("Done")){
 				str = "DONEU";
@@ -60,7 +77,8 @@ public class client{
 				userid = "";
 			}
 			else
-				errorExit("Unknown Command!");
+				return "Unknown Command!";
+				// errorExit("Unknown Command!");
 		}
 		
 		return str;
@@ -79,16 +97,27 @@ public class client{
 			
 			while(true){
 				String sendstr = userInterface();
+				if(sendstr.equals("Unknown Command!")){
+					System.out.println("Unknown Command!");
+					continue;
+				}
 				
 				out.writeUTF(sendstr);				
 				if(sendstr.equals("QUIT"))
 					break;
 				
-				System.out.println("Response: " + in.readUTF());
+				String res = in.readUTF();
+				if(res.contains("User does not exist!") || res.contains("Syntax Error"))
+					subprompt = false;
+				
+				System.out.println("Response: " + res);
 			}
 			out.writeUTF("QUIT");
 			
 			s.close();
+		}
+		catch(EOFException e){
+			System.out.println("Possible Server Crash!");
 		}
 		catch(IOException e){
 			e.printStackTrace();

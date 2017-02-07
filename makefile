@@ -1,13 +1,16 @@
 all: server client
 
 server: src/server.java
-	javac src/server.java
+	javac -d bin/ src/server.java
 
 client: src/client.java
-	javac src/client.java
+	javac -d bin/ src/client.java
 
 rs: server
-	@cd src && java server 1080
+	@cd bin && java server 1080
 
 rc: client
-	@cd src && java client localhost 1080
+	@cd bin && java client localhost 1080
+
+clean:
+	rm bin/*
