@@ -7,6 +7,7 @@ import java.net.Socket;
 /*
  * To do:
  * 		Loop while receiving packets
+ * 		Send urself
  */
 
 class CommandParser{
@@ -16,8 +17,6 @@ class CommandParser{
 
 	//	Current User File
 	RandomAccessFile fil;
-	// BufferedReader rfil;
-	// BufferedWriter wfil;
 	
 	void errorExit(String s){
 		System.err.println("Error: " + s);
@@ -220,20 +219,10 @@ class CommandParser{
 	}
 }
 
-/*
- * To do:
- * 		Fork thread for each client and handle
- * 		Fix socket read via looping
- */
-class Server implements Runnable{
-	ServerSocket sock;
-	Socket usersock;
-	Thread t;
+class Server extends Thread{
+	public ServerSocket sock;
+	public Socket usersock;
 	
-	Server(int port) throws IOException{
-		sock = new ServerSocket(port, 5);
-	}
-
 	/*
 	 * Accepts connections from users and handles one at a time
 	 */
@@ -272,22 +261,6 @@ class Server implements Runnable{
 			e.printStackTrace();
 		}
 	}	
-	
-	public void start(){
-		while(true){
-			try{
-				usersock = sock.accept();
-				t = new Thread(this, "user thread " + Integer.toString(usersock.getLocalPort()));
-				/*
-				 * Waiting here, fix. Plus, handle EOF.
-				 */
-				t.run();
-			}
-			catch(IOException e){
-				e.printStackTrace();
-			}
-		}
-	}
 }
 
 public class server{
@@ -296,9 +269,23 @@ public class server{
 		
 		int port = Integer.parseInt(args[0]);
 		
-		try{
-			Server s = new Server(port);
-			s.start();
+		try{			
+			ServerSocket sock = new ServerSocket(port, 5);
+			Socket usersock;
+			Server s;
+			
+			while(true){
+				try{
+					usersock = sock.accept();
+					s = new Server();
+					s.sock = sock;
+					s.usersock = usersock;
+					s.start();
+				}
+				catch(IOException e){
+					e.printStackTrace();
+				}
+			}
 		}
 		catch(IOException e){
 			e.printStackTrace();

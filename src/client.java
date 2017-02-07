@@ -38,7 +38,6 @@ public class client{
 				str = "QUIT";
 			else
 				return "Unknown Command!";
-				// errorExit("Unknown Command!");
 		}
 		else{
 			System.out.print("Sub-Prompt-"+userid+"> ");
@@ -55,7 +54,6 @@ public class client{
 			else if(cmd.equals("Delete"))
 				str = "DELM";
 			else if(cmd.equals("Send")){
-				// to do
 				String subject, msg;
 				
 				System.out.print("\tType Subject: ");
@@ -78,7 +76,6 @@ public class client{
 			}
 			else
 				return "Unknown Command!";
-				// errorExit("Unknown Command!");
 		}
 		
 		return str;
