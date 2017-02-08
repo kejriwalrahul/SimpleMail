@@ -2,16 +2,32 @@ import java.util.*;
 import java.io.*;
 import java.net.*;
 
+/*
+ *	Main class
+ *		Implements client side 
+ */
 public class client{
 	static Scanner stdin = new Scanner(System.in);
+	
+	// Flag to check if in user subprompt.
 	static boolean subprompt = false;
+	// Current user
 	static String userid = "";
 	
+	/*
+	 *  Function to print error msg and exit on error with non-zero error code.
+	 *  Used as last resorts.
+	 *  Prefer showing error msgs.
+	 */
 	static void errorExit(String s){
 		System.err.println("Error: " + s);
 		System.exit(1);
 	}
 	
+	/*
+	 *  Implements client side interface (Command Parser)
+	 *  Returns command to be sent to the server side.
+	 */
 	static String userInterface(){
 		String str = "";
 		
@@ -81,6 +97,10 @@ public class client{
 		return str;
 	}
 	
+	/*
+	 *  Network Interface
+	 *  Establishes connections and xmits and receives msgs from server.
+	 */
 	public static void main(String[] args){
 		String  server 	= args[0];
 		int 	port	= Integer.parseInt(args[1]);

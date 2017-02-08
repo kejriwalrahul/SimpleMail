@@ -10,6 +10,10 @@ import java.net.Socket;
  * 		Send urself
  */
 
+/*
+ *  Class to parse commands at server side and
+ *  	execute corresponding actions
+ */
 class CommandParser{
 	
 	// Current userid
@@ -18,11 +22,17 @@ class CommandParser{
 	//	Current User File
 	RandomAccessFile fil;
 	
+	/*
+	 * 	Function to print error msg and exit with non-zero error code.
+	 *  To be used as last resort
+	 *  Prefer to send error msgs to clients
+	 */
 	void errorExit(String s){
 		System.err.println("Error: " + s);
 		System.exit(1);
 	}
 	
+	// Function to list users known to the system
 	String listUsers(){
 		String res = "";
 		File dir = new File(".");
@@ -36,6 +46,7 @@ class CommandParser{
 		return res;
 	}
 	
+	// Function to add user to system, if not already existing
 	String addUser(String u){
 		File f = new File("./" + u + ".dat");
 		
@@ -53,6 +64,7 @@ class CommandParser{
 		return "Add User Successful";
 	}
 	
+	// Function to count no. of msgs in current spool file. Seeks back to file beginning post counting.
 	int countMsgs(){
 		String line;
 		int count = 0;
@@ -80,6 +92,7 @@ class CommandParser{
 		return count;
 	}
 	
+	// Sets current user, if exists.
 	String setCurrUser(String u){
 		String res = "";
 		
@@ -109,6 +122,7 @@ class CommandParser{
 		return "User " + u + " exists and has " + Integer.toString(countMsgs()) + " number of messages in his/her spool file";
 	}
 	
+	// Reads current msg
 	String readMsg(){
 		String res = "";
 		
@@ -136,6 +150,7 @@ class CommandParser{
 		return res;
 	}
 	
+	// Deletes current msg
 	String delMsg(){
 		String res = "";
 		
@@ -143,26 +158,33 @@ class CommandParser{
 	}
 	
 	/*
-	 * What if sending urself?
+	 * Function to send msg, if recipient exists.
+	 * Issue:
+	 * 		What if sending urself?
 	 * 
 	*/
 	String sendMsg(String cmd){
 		String[] parts = cmd.split("###");
 		String[] toks  = parts[0].split(" ");
 		
+		// Parse the receiver of mail.
 		String recvr = toks[1];
 
+		// Parse the subject portion of command.
 		String subj = "";
 		for(int i=2;i<toks.length;i++)
 			subj += toks[i] + " ";
 		subj = subj.trim();
 		
+		// Parse the msg body portion of command.
 		String msg  = parts[1] + "\n###";
 		
+		// Open receiver spool file, if exists.
 		File recvf = new File("./" + recvr + ".dat");
 		if(!recvf.exists())
 			return "Reciever does not exist!";
 		
+		// Try writing mail.
 		try{
 			RandomAccessFile recvfil = new RandomAccessFile(recvf, "rw");
 			
@@ -183,14 +205,13 @@ class CommandParser{
 		return "Error";
 	}
 	
+	// Closes down the current user.
 	String closeUser(){
 		String res = "Close Successful";
 		
 		userid =  "";
 		try{
 			fil.close();
-			// rfil.close();
-			// wfil.close();			
 		}
 		catch(IOException e){
 			e.printStackTrace();
@@ -199,6 +220,7 @@ class CommandParser{
 		return res;
 	}
 	
+	// Dispatches command to relevant action. Raises error msg on inappropriate usage.
 	String dispatchCommand(String cmd){
 		String[] tokens = cmd.split(" ");
 		
@@ -219,12 +241,16 @@ class CommandParser{
 	}
 }
 
+/*
+ * 	Server class to handle each incoming connection.
+ *  Allows multiple clients to run concurrently each having their own active users.
+ */
 class Server extends Thread{
 	public ServerSocket sock;
 	public Socket usersock;
 	
 	/*
-	 * Accepts connections from users and handles one at a time
+	 *  Creates a command parser for current incoming client.
 	 */
 	public void run(){
 		try{	
@@ -263,6 +289,11 @@ class Server extends Thread{
 	}	
 }
 
+/*
+ * 	Main class
+ * 		Accepts connections and creates a Server object in its own thread for each incoming connection.
+ * 
+ */
 public class server{
 	public static void main(String[] args) throws IOException{
 		CommandParser c = new CommandParser();
