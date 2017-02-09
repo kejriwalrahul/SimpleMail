@@ -104,7 +104,10 @@ public class client{
 	public static void main(String[] args){
 		String  server 	= args[0];
 		int 	port	= Integer.parseInt(args[1]);
-	
+		
+		String sendstr = "";
+		boolean quit = false;
+		
 		try{
 			System.out.println("About to open " + server + " at " + Integer.toString(port));
 			
@@ -113,27 +116,52 @@ public class client{
 			DataInputStream  in  = new DataInputStream(s.getInputStream());
 			
 			while(true){
-				String sendstr = userInterface();
+				sendstr = userInterface();
 				if(sendstr.equals("Unknown Command!")){
 					System.out.println("Unknown Command!");
 					continue;
 				}
 				
-				out.writeUTF(sendstr);				
-				if(sendstr.equals("QUIT"))
-					break;
+				sendstr = sendstr + " #### ###";
+				if(sendstr.equals("QUIT #### ###"))
+					quit = true;
 				
-				String res = in.readUTF();
+				while(!sendstr.equals("")){
+					if(sendstr.length() > 65530){
+						out.writeUTF(sendstr.substring(0, 65530));
+						sendstr = sendstr.substring(65530);
+					}
+					else{
+						out.writeUTF(sendstr);
+						sendstr = "";
+					}							
+				}
+				
+				if(quit)
+					break;
+								
+				// Initialize empty buffer
+				String res = "";
+				
+				// Receive pkts till msg terminator
+				while(!(res = in.readUTF()).contains("#### ###"));
+				
+				// Remove terminator
+				res = res.substring(0, res.indexOf("#### ###"));
+				
+				
 				if(res.contains("User does not exist!") || res.contains("Syntax Error"))
 					subprompt = false;
 				
 				System.out.println("Response: " + res);
 			}
-			out.writeUTF("QUIT");
+			// out.writeUTF("QUIT");
 			
 			s.close();
 		}
 		catch(EOFException e){
+			// System.out.println("Sent: " + sendstr);
+			// e.printStackTrace();
 			System.out.println("Possible Server Crash!");
 		}
 		catch(IOException e){

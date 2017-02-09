@@ -6,8 +6,9 @@ import java.net.Socket;
 
 /*
  * To do:
- * 		Loop while receiving packets
- * 		Send urself
+ * 		1. Loop while receiving packets - done
+ * 		2. Send urself: works apparently
+ * 					 concurrency issues? - not found
  */
 
 /*
@@ -21,6 +22,7 @@ class CommandParser{
 
 	//	Current User File
 	RandomAccessFile fil;
+	File fileObj;
 	
 	/*
 	 * 	Function to print error msg and exit with non-zero error code.
@@ -113,6 +115,7 @@ class CommandParser{
 			*/
 			
 			fil = new RandomAccessFile(f, "rw");
+			fileObj = f;
 		}
 		catch(IOException e){
 			e.printStackTrace();
@@ -144,7 +147,7 @@ class CommandParser{
 			e.printStackTrace();
 		}
 		
-		if(res == "")
+		if(!res.contains("###"))
 			res = "No More Mail";
 		
 		return res;
@@ -152,9 +155,63 @@ class CommandParser{
 	
 	// Deletes current msg
 	String delMsg(){
-		String res = "";
+		RandomAccessFile tempfil;
+		boolean delflag = false;
+		long offset = 0;
 		
-		return res;
+		File temp = new File("./temp");
+		/*
+		if(temp.exists())
+			return "Server Error!";
+		*/
+		
+		try{
+			temp.createNewFile();
+			tempfil = new RandomAccessFile(temp, "rw");
+			
+			offset = fil.getFilePointer();
+			long current_offset = 0;
+			fil.seek(0);
+			
+			// Copy earlier contents
+			while(current_offset != offset){
+				tempfil.writeUTF(fil.readUTF());
+				current_offset = fil.getFilePointer();
+			}
+			
+			// Skip Current Msg
+			while(!fil.readUTF().contains("###"));
+			delflag = true;
+			
+			// Copy after contents
+			String line = "";
+			while(!(line = fil.readUTF()).isEmpty()){
+				tempfil.writeUTF(line);
+			}
+			
+			tempfil.close();
+		}
+		catch(EOFException e){
+			if(!delflag)
+				return "No More Mail";
+		}
+		catch(IOException e){
+			e.printStackTrace();
+		}
+		
+		try{
+			fil.close();
+			fileObj.delete();
+			fileObj = new File("./" + userid + ".dat");
+			temp.renameTo(fileObj);
+			fil = new RandomAccessFile(fileObj, "rw");
+			fil.seek(offset);
+		}
+		catch(IOException e){
+			e.printStackTrace();
+		}
+		
+		return "Message Deleted";
 	}
 	
 	/*
@@ -192,7 +249,19 @@ class CommandParser{
 			recvfil.writeUTF("\nFrom: " + userid.trim() + "\n");
 			recvfil.writeUTF("To: " + recvr.trim() + "\n");
 			recvfil.writeUTF("Subject: " + subj.trim() + "\n");
-			recvfil.writeUTF(msg.trim() + "\n");
+			
+			msg = msg.trim();
+			while(!msg.equals("")){
+				if(msg.length() > 65530){
+					recvfil.writeUTF(msg.substring(0, 65530));
+					msg = msg.substring(65530);
+				}
+				else{
+					recvfil.writeUTF(msg);
+					msg = "";
+				}
+			}
+			recvfil.writeUTF("\n");
 			
 			recvfil.close();
 			
@@ -263,7 +332,16 @@ class Server extends Thread{
 					/*
 					 * Loop and read whole thing
 					 */
-					cmd = in.readUTF();
+					
+					// Initialize empty buffer
+					cmd = "";
+					
+					// Receive pkts till msg terminator
+					while(!(cmd += in.readUTF()).contains("#### ###"));
+					
+					// Remove terminator
+					cmd = cmd.substring(0, cmd.indexOf("#### ###"));
+					cmd = cmd.trim();
 				}
 				catch(EOFException e){
 					System.out.println("Exiting!");
@@ -279,7 +357,19 @@ class Server extends Thread{
 				}
 					
 				DataOutputStream out = new DataOutputStream(usersock.getOutputStream());
-				out.writeUTF(res);
+				res = res + "#### ###";
+				
+				while(!res.equals("")){
+					if(res.length() > 65530){
+						out.writeUTF(res.substring(0, 65530));
+						res = res.substring(65530);
+						
+					}
+					else{
+						out.writeUTF(res);
+						res = "";
+					}							
+				}
 			}
 			usersock.close();
 		}
