@@ -31,6 +31,9 @@ public class client{
 	static String userInterface(){
 		String str = "";
 		
+		/*
+			Main Interface
+		*/
 		if(!subprompt){
 			System.out.print("Main-Prompt> ");
 			str = stdin.nextLine();
@@ -52,9 +55,13 @@ public class client{
 			}
 			else if(cmd.equals("Quit"))
 				str = "QUIT";
+			// Throw err msg, for unrecognized commands
 			else
 				return "Unknown Command!";
 		}
+		/*
+			Sub-prompt interface
+		*/
 		else{
 			System.out.print("Sub-Prompt-"+userid+"> ");
 			str = stdin.nextLine();
@@ -72,9 +79,11 @@ public class client{
 			else if(cmd.equals("Send")){
 				String subject, msg;
 				
+				// Get subject
 				System.out.print("\tType Subject: ");
 				subject = stdin.nextLine();
 				
+				// Get Msg, Loop till we receive ### delimiter
 				System.out.print("\tType Message: ");
 				msg = stdin.nextLine();
 				while(!msg.endsWith("###")){
@@ -90,10 +99,12 @@ public class client{
 				subprompt = false;
 				userid = "";
 			}
+			// Throw err msg, for unrecognized commands
 			else
 				return "Unknown Command!";
 		}
 		
+		// Returns command to be xmitted to server
 		return str;
 	}
 	
@@ -111,21 +122,31 @@ public class client{
 		try{
 			System.out.println("About to open " + server + " at " + Integer.toString(port));
 			
+			// Establish sockets for communication
 			Socket s = new Socket(server, port);
 			DataOutputStream out = new DataOutputStream(s.getOutputStream());
 			DataInputStream  in  = new DataInputStream(s.getInputStream());
 			
+			// Communicate on established connection, as long as reqd 
 			while(true){
+				// Get cmd to be xmitted
 				sendstr = userInterface();
 				if(sendstr.equals("Unknown Command!")){
 					System.out.println("Unknown Command!");
 					continue;
 				}
 				
+				/*
+					Each cmd is given a '#### ###' trailer to recognize msg end.
+				*/
 				sendstr = sendstr + " #### ###";
 				if(sendstr.equals("QUIT #### ###"))
 					quit = true;
 				
+				/*
+					Max len msg = 65536 since UTF uses only 2 bytes for length.
+					If msg.len > MAX_LEN, split and send in mulitple rounds.
+				*/
 				while(!sendstr.equals("")){
 					if(sendstr.length() > 65530){
 						out.writeUTF(sendstr.substring(0, 65530));
@@ -137,6 +158,9 @@ public class client{
 					}							
 				}
 				
+				/*
+					Exit on quit cmd.
+				*/
 				if(quit)
 					break;
 								
@@ -149,22 +173,27 @@ public class client{
 				// Remove terminator
 				res = res.substring(0, res.indexOf("#### ###"));
 				
-				
+				// If cmd fails and user is set, exit subprompt. 
 				if(res.contains("User does not exist!") || res.contains("Syntax Error"))
 					subprompt = false;
 				
+				// Display response
 				System.out.println("Response: " + res);
 			}
 			// out.writeUTF("QUIT");
 			
+			// Close connection
 			s.close();
 		}
 		catch(EOFException e){
 			// System.out.println("Sent: " + sendstr);
 			// e.printStackTrace();
+			
+			// If server has crashed, EOF appears in socket streams.
 			System.out.println("Possible Server Crash!");
 		}
 		catch(IOException e){
+			System.out.println("\nError received. Please find details:");
 			e.printStackTrace();
 		}
 	}

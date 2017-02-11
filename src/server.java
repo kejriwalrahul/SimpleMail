@@ -3,12 +3,12 @@ import java.io.*;
 import java.nio.file.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.text.SimpleDateFormat;
 
 /*
  * To do:
- * 		1. Loop while receiving packets - done
- * 		2. Send urself: works apparently
- * 					 concurrency issues? - not found
+ * 		1. [DONE] Loop while receiving packets
+ * 		2. [DONE] Send mail to urself: works apparently
  */
 
 /*
@@ -72,6 +72,7 @@ class CommandParser{
 		int count = 0;
 		
 		try{
+			// Counts # of msg delimiters
 			while((line = fil.readUTF()) != null){
 				if(line.trim().contains("###"))
 					count++;
@@ -79,6 +80,7 @@ class CommandParser{
 		}
 		catch(EOFException e){
 			try{
+				// Goto file start on reaching end
 				fil.seek(0);	
 			}
 			catch(IOException ef){
@@ -90,7 +92,10 @@ class CommandParser{
 			errorExit("IOError from count msgs!");
 		}
 		
+		// Server monitoring msg
 		System.out.println("No of msgs: " + Integer.toString(count) + "\n");
+		
+		// Returns # of msgs in user file
 		return count;
 	}
 	
@@ -98,9 +103,11 @@ class CommandParser{
 	String setCurrUser(String u){
 		String res = "";
 		
+		// If any user is active, deactivate him/her
 		if(userid != "")
 			closeUser();
 		
+		// Check if user exists
 		File f = new File("./" + u + ".dat");
 		if(!f.exists())
 			return "User does not exist!";
@@ -114,6 +121,7 @@ class CommandParser{
 				wfil = Files.newBufferedWriter(p);
 			*/
 			
+			// Open user file
 			fil = new RandomAccessFile(f, "rw");
 			fileObj = f;
 		}
@@ -122,6 +130,7 @@ class CommandParser{
 			errorExit("File Open Error!");
 		}
 		
+		// Return ack msg with # of user msgs
 		return "User " + u + " exists and has " + Integer.toString(countMsgs()) + " number of messages in his/her spool file";
 	}
 	
@@ -132,6 +141,7 @@ class CommandParser{
 		String s = "\n";
 		int idx;
 		try{
+			// Reads off msg
 			while((s = fil.readUTF()) != null){
 				if(s.trim().contains("###")){
 					res += s;
@@ -141,12 +151,14 @@ class CommandParser{
 			}
 		}
 		catch(EOFException e){
-			
+			// On reaching end of file, do nothing, send back read string
+			// Failsafe, should reach here only when no msg is left in spool file.
 		}
 		catch(IOException e){
 			e.printStackTrace();
 		}
 		
+		// If string read is not a msg
 		if(!res.contains("###"))
 			res = "No More Mail";
 		
@@ -159,39 +171,41 @@ class CommandParser{
 		boolean delflag = false;
 		long offset = 0;
 		
+		// Create temp file for copying remaining mails
 		File temp = new File("./temp");
-		/*
-		if(temp.exists())
-			return "Server Error!";
-		*/
 		
 		try{
+			// Create and open temp file
 			temp.createNewFile();
 			tempfil = new RandomAccessFile(temp, "rw");
 			
+			// Get position of msg to be deleted
 			offset = fil.getFilePointer();
 			long current_offset = 0;
+			// Goto file start
 			fil.seek(0);
 			
-			// Copy earlier contents
+			// Copy mails before one to be deleted
 			while(current_offset != offset){
 				tempfil.writeUTF(fil.readUTF());
 				current_offset = fil.getFilePointer();
 			}
 			
-			// Skip Current Msg
+			// Skip Msg to be deleted
 			while(!fil.readUTF().contains("###"));
 			delflag = true;
 			
-			// Copy after contents
+			// Copy mail after msg to be deleted
 			String line = "";
 			while(!(line = fil.readUTF()).isEmpty()){
 				tempfil.writeUTF(line);
 			}
 			
+			// Close temp file
 			tempfil.close();
 		}
 		catch(EOFException e){
+			// If no file to be deleted 
 			if(!delflag)
 				return "No More Mail";
 		}
@@ -200,11 +214,17 @@ class CommandParser{
 		}
 		
 		try{
+			// Close user file
 			fil.close();
+			// Delete user file
 			fileObj.delete();
+			// Create new user file object
 			fileObj = new File("./" + userid + ".dat");
+			// Rename temp file to newly created user file object 
 			temp.renameTo(fileObj);
+			// Reopen (new) user file
 			fil = new RandomAccessFile(fileObj, "rw");
+			// Set file pointer back to original position
 			fil.seek(offset);
 		}
 		catch(IOException e){
@@ -217,7 +237,7 @@ class CommandParser{
 	/*
 	 * Function to send msg, if recipient exists.
 	 * Issue:
-	 * 		What if sending urself?
+	 * 		[FIXED] What if sending urself?
 	 * 
 	*/
 	String sendMsg(String cmd){
@@ -245,12 +265,19 @@ class CommandParser{
 		try{
 			RandomAccessFile recvfil = new RandomAccessFile(recvf, "rw");
 			
+			// Goto end of file
 			recvfil.seek(recvfil.length());
+			
+			// Write headers
 			recvfil.writeUTF("\nFrom: " + userid.trim() + "\n");
 			recvfil.writeUTF("To: " + recvr.trim() + "\n");
+			recvfil.writeUTF("Date: " + (new SimpleDateFormat("EEE MMM dd HH:mm:ss zzz yyyy").format(new Date()))+"\n");
 			recvfil.writeUTF("Subject: " + subj.trim() + "\n");
 			
+			// Remove trailing spaces in msg
 			msg = msg.trim();
+
+			// Write msg to file 
 			while(!msg.equals("")){
 				if(msg.length() > 65530){
 					recvfil.writeUTF(msg.substring(0, 65530));
@@ -263,6 +290,7 @@ class CommandParser{
 			}
 			recvfil.writeUTF("\n");
 			
+			// Close file
 			recvfil.close();
 			
 			return "Message Sent";
@@ -278,8 +306,10 @@ class CommandParser{
 	String closeUser(){
 		String res = "Close Successful";
 		
+		// Set user to empty
 		userid =  "";
 		try{
+			// Close user file
 			fil.close();
 		}
 		catch(IOException e){
@@ -293,18 +323,22 @@ class CommandParser{
 	String dispatchCommand(String cmd){
 		String[] tokens = cmd.split(" ");
 		
+		// For commands sent with arguments
 		if(tokens.length >= 2){
 			if(tokens[0].equals("ADDU"))			return addUser(tokens[1]);
 			else if(tokens[0].equals("USER"))		return setCurrUser(tokens[1]);
 			else if(tokens[0].equals("SEND"))		return sendMsg(cmd);
+			// For unrecognized commands, send err msg
 			else 									return "Syntax Error!";
 		}
+		// For commands sent without arguments
 		else{
 			if(tokens[0].equals("LSTU"))			return listUsers();
 			else if(tokens[0].equals("READM"))		return readMsg();
 			else if(tokens[0].equals("DELM"))		return delMsg();
 			else if(tokens[0].equals("DONEU"))		return closeUser();
 			else if(tokens[0].equals("QUIT"))		return "";
+			// For unrecognized commands, send err msg
 			else 									return "Syntax Error";
 		}
 	}
@@ -330,13 +364,13 @@ class Server extends Thread{
 				
 				try{
 					/*
-					 * Loop and read whole thing
+					 * Loop and read whole msg sent by the client
 					 */
 					
 					// Initialize empty buffer
 					cmd = "";
 					
-					// Receive pkts till msg terminator
+					// Receive pkts till msg terminator is read
 					while(!(cmd += in.readUTF()).contains("#### ###"));
 					
 					// Remove terminator
@@ -344,21 +378,28 @@ class Server extends Thread{
 					cmd = cmd.trim();
 				}
 				catch(EOFException e){
+					// If user closed connection
 					System.out.println("Exiting!");
 					break;
 				}
 				
+				// Server monitoring msg
 				System.out.println("Received: " + cmd);
 				
+				// Execute received command
 				String res = c.dispatchCommand(cmd);
+				// Close connection on QUIT
 				if(cmd.equals("QUIT")){
 					System.out.println("Exiting!");
 					break;
 				}
 					
+				// Get stram to reply to user
 				DataOutputStream out = new DataOutputStream(usersock.getOutputStream());
+				// Append delimiter to msg
 				res = res + "#### ###";
 				
+				// Split msg and send till nothing is left to send
 				while(!res.equals("")){
 					if(res.length() > 65530){
 						out.writeUTF(res.substring(0, 65530));
@@ -371,6 +412,7 @@ class Server extends Thread{
 					}							
 				}
 			}
+			// Close user socket
 			usersock.close();
 		}
 		catch(IOException e){
@@ -386,21 +428,26 @@ class Server extends Thread{
  */
 public class server{
 	public static void main(String[] args) throws IOException{
-		CommandParser c = new CommandParser();
-		
+		// Get port
 		int port = Integer.parseInt(args[0]);
 		
 		try{			
+			// Open master socket for server 
 			ServerSocket sock = new ServerSocket(port, 5);
+			// Client(slave) socket
 			Socket usersock;
 			Server s;
 			
 			while(true){
 				try{
+					// Accept TCP connection
 					usersock = sock.accept();
+					// Create child to serve received user
 					s = new Server();
+					// Set child's sockets fields
 					s.sock = sock;
 					s.usersock = usersock;
+					// Start the child thread
 					s.start();
 				}
 				catch(IOException e){
