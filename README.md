@@ -7,23 +7,23 @@ A Simple Mail service client and server program using TCP sockets
 ## Instructions(Server): 
    
 1. Build the class files using:
-    make server
+   `make server`
 2. Change directory to bin:
-    cd MAILSERVER
+    `cd MAILSERVER`
 3. Run server using:
-    java server <PortNo>
+    `java server <PortNo>`
     
-Note: You can use port no. 1080.  
+Note: You can use port# 1080.  
 
 ## Instructions(Client): 
 
 1. Build the class files using:
-    make client
+    `make client`
 2. Change directory to bin:
-    cd MAILCLIENT
+    `cd MAILCLIENT`
 3. Run server using:
-    java client <hostname/ip> <PortNo>
+    `java client <hostname/ip> <PortNo>`
         
 Note: hostname/ip is either the hostname of the server machine (should be present in the /etc/hosts file) or the IP address of the server machine.
 
-Note: You can use port no. 1080 (should agree with server).
+Note: You can use port# 1080 (should agree with server).
