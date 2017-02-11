@@ -12,7 +12,8 @@ A Simple Mail service client and server program using TCP sockets
     cd MAILSERVER
 3. Run server using:
     java server <PortNo>
-    You can use port no. 1080.  
+    
+Note: You can use port no. 1080.  
 
 ## Instructions(Client): 
 
